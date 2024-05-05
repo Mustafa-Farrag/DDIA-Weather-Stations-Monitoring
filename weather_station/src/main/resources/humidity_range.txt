@@ -1,0 +1,5 @@
+Very Dry: Below 20%
+Dry: 20% to 40%
+Comfortable: 40% to 60%
+Humid: 60% to 80%
+Very Humid: Above 80%
