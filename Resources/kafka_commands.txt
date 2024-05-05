@@ -6,7 +6,9 @@ docker-compose -f docker_compose.yml up -d
 
 # delete a topic
 /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic weather-topic
+/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic rain-detection-topic
 /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic __consumer_offsets
 
-### test producer
+# test producer
 /opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic weather-topic --from-beginning
+/opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic rain-detection-topic --from-beginning

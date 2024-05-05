@@ -3,11 +3,10 @@ package org.example;
 import java.util.Random;
 
 public class WeatherMessage {
-    private enum Level{low, medium, high}
     private final long station_id;
     private final long s_no;
 
-    private final Level battery_status;
+    private final String battery_status;
     private final long status_timestamp;
     private final WeatherStatus weather;
 
@@ -17,11 +16,11 @@ public class WeatherMessage {
 
         double randomNumber = new Random().nextDouble();
         if (randomNumber < 0.3) {
-            this.battery_status = Level.low;
+            this.battery_status = "low";
         } else if (randomNumber < 0.3 + 0.4) {
-            this.battery_status = Level.medium;
+            this.battery_status = "medium";
         } else {
-            this.battery_status = Level.high;
+            this.battery_status = "high";
         }
 
         this.status_timestamp = System.currentTimeMillis();
@@ -48,7 +47,7 @@ public class WeatherMessage {
     }
 
     public String getBattery_status() {
-        return battery_status.toString();
+        return battery_status;
     }
 
     public long getStatus_timestamp() {
