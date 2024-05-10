@@ -52,14 +52,6 @@ public class Bitcask<K extends Serializable, V extends Serializable> {
     }
 
     /*
-        Fold over all K/V pairs in a Bitcask datastore.
-        Fun is expected to be of the form: F(K,V) → L.
-     */
-    public <L> L fold(BitcaskHandle<K, V> handle, BiFunction<K, V, L> function) {
-        //TODO: Implement this.
-    }
-
-    /*
         Merge several data files within a Bitcask datastore into a more
         compact form. Also, produce hintfiles for faster startup.
      */
