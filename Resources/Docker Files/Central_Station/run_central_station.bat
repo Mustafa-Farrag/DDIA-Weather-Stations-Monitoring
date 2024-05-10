@@ -1,0 +1,1 @@
+docker run -d -it -p 7777:7777 --net=kafka_network --name central_station central-station-image

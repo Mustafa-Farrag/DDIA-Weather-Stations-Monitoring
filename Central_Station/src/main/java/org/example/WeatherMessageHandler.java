@@ -11,30 +11,32 @@ import java.util.stream.Collectors;
 public class WeatherMessageHandler {
 
     public ArrayList<ArrayList<WeatherMessage>> stationMessages;
-    private String storageBaseDir;
+    private final String storageBaseDir;
 
     private final int BATCH_SIZE = 10;
 
     public WeatherMessageHandler(String storageBaseDir){
+        File storageDir = new File(storageBaseDir);
+        if (!storageDir.exists()) storageDir.mkdir();
 
         this.storageBaseDir = storageBaseDir;
 
         stationMessages = new ArrayList<>();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 1; i < 11; i++) {
             stationMessages.add(new ArrayList<>());
-            File stationDir = new File(storageBaseDir + "\\" + i);
+            File stationDir = new File(storageBaseDir + "/" + i);
             if (!stationDir.exists()) stationDir.mkdir();
         }
     }
 
-    public void addMessage(String message){
+    public void addMessage(String message) throws Exception{
         WeatherMessage weatherMessage = WeatherMessageParser.parse(message);
 
-        stationMessages.get(weatherMessage.getStation_id()).add(weatherMessage);
+        stationMessages.get(weatherMessage.getStation_id()-1).add(weatherMessage);
 
-        if (stationMessages.get(weatherMessage.getStation_id()).size() >= BATCH_SIZE ) {
-            writeMessages(weatherMessage.getStation_id());
+        if (stationMessages.get(weatherMessage.getStation_id()-1).size() >= BATCH_SIZE ) {
+            writeMessages(weatherMessage.getStation_id()-1);
         }
     }
 
@@ -45,11 +47,11 @@ public class WeatherMessageHandler {
         return calendar;
     }
 
-    private void writeMessages(int stationID){
+    private void writeMessages(int stationID) throws Exception{
         WeatherMessage message = stationMessages.get(stationID).get(0);
 
         Calendar calendar = convertTimeStampToDate(message.getStatus_timestamp());
-        String stationPath = storageBaseDir + "\\" + stationID + "\\"+
+        String stationPath = storageBaseDir + "/" + (stationID + 1) + "/"+
                 calendar.get(Calendar.YEAR) + "_" + (calendar.get(Calendar.MONTH) + 1) + "_" + calendar.get(Calendar.DAY_OF_MONTH);
         File stationDir = new File(stationPath);
         if (!stationDir.exists()) stationDir.mkdir();
@@ -64,11 +66,11 @@ public class WeatherMessageHandler {
                     .filter(m ->  convertTimeStampToDate(m.getStatus_timestamp()).get(Calendar.DAY_OF_MONTH) == oldDate).collect(Collectors.toList());
             ArrayList<WeatherMessage> newMessages = (ArrayList<WeatherMessage>) stationMessages.get(stationID).stream()
                     .filter(m ->  convertTimeStampToDate(m.getStatus_timestamp()).get(Calendar.DAY_OF_MONTH) == newDate).collect(Collectors.toList());
-            MessagesParquetWriter.writeParquets(stationPath + "\\" + getParquetFileName(message.getStatus_timestamp())+ ".parquet", oldMessages);
+            MessagesParquetWriter.writeParquets(stationPath + "/" + getParquetFileName(message.getStatus_timestamp())+ ".parquet", oldMessages);
             stationMessages.set(stationID, newMessages);
 
         } else {
-            MessagesParquetWriter.writeParquets(stationPath + "\\" + getParquetFileName(message.getStatus_timestamp())+ ".parquet", stationMessages.get(stationID));
+            MessagesParquetWriter.writeParquets(stationPath + "/" + getParquetFileName(message.getStatus_timestamp())+ ".parquet", stationMessages.get(stationID));
             stationMessages.get(stationID).clear();
         }
     }

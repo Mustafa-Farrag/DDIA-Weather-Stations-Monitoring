@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 public class WeatherProducer {
     private static final String TOPIC = "weather-topic";
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String BOOTSTRAP_SERVERS = "kafka:9092";
 
     public static void produce(int station_id) {
         Properties props = new Properties();

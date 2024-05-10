@@ -1,5 +1,5 @@
 ## docker-compose
-`docker-compose -f docker_compose.yml up -d`
+`docker-compose -f docker_compose.yml -p kafka up -d`
 
 ## create weather-topic (should exist before rain detector processor)
 `/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 -topic weather-topic -create`

@@ -1,0 +1,11 @@
+FROM eclipse-temurin:21-jdk-jammy
+
+COPY target/ /usr/src/app/
+
+WORKDIR /usr/src/app
+
+EXPOSE 6666
+
+ENV STATION_ID=1
+
+ENTRYPOINT java -jar Weather_Station-1.0-SNAPSHOT.jar ${STATION_ID}

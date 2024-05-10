@@ -11,9 +11,9 @@ import java.util.Properties;
 public class CentralStation {
 
     private static final String TOPIC = "weather-topic";
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String BOOTSTRAP_SERVERS = "kafka:9092";
 
-    private WeatherMessageHandler weatherMessageHandler;
+    private final WeatherMessageHandler weatherMessageHandler;
 
     public void consume() {
         Properties props = new Properties();
@@ -28,6 +28,7 @@ public class CentralStation {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
                 for (ConsumerRecord<String, String> record : records) {
                     String messageValue = record.value();
+                    System.out.println("msg: "+messageValue);
                     weatherMessageHandler.addMessage(messageValue);
                 }
             }

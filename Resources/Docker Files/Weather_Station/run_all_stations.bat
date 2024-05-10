@@ -1,0 +1,10 @@
+docker run -e STATION_ID=1 -d -it -p 6660:6666 --net=kafka_network --name weather-station-1 weather-station-image
+docker run -e STATION_ID=2 -d -it -p 6661:6666 --net=kafka_network --name weather-station-2 weather-station-image
+docker run -e STATION_ID=3 -d -it -p 6662:6666 --net=kafka_network --name weather-station-3 weather-station-image
+docker run -e STATION_ID=4 -d -it -p 6663:6666 --net=kafka_network --name weather-station-4 weather-station-image
+docker run -e STATION_ID=5 -d -it -p 6664:6666 --net=kafka_network --name weather-station-5 weather-station-image
+docker run -e STATION_ID=6 -d -it -p 6665:6666 --net=kafka_network --name weather-station-6 weather-station-image
+docker run -e STATION_ID=7 -d -it -p 6666:6666 --net=kafka_network --name weather-station-7 weather-station-image
+docker run -e STATION_ID=8 -d -it -p 6667:6666 --net=kafka_network --name weather-station-8 weather-station-image
+docker run -e STATION_ID=9 -d -it -p 6668:6666 --net=kafka_network --name weather-station-9 weather-station-image
+docker run -e STATION_ID=10 -d -it -p 6669:6666 --net=kafka_network --name weather-station-10 weather-station-image

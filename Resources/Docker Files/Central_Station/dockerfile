@@ -1,0 +1,11 @@
+FROM eclipse-temurin:21-jdk-jammy
+
+COPY target/ /usr/src/app/
+
+WORKDIR /usr/src/app/
+
+EXPOSE 7777
+
+ENV PARQUET_PATH=/home/parquet/
+
+ENTRYPOINT java -jar Central_Station-1.0-SNAPSHOT.jar $PARQUET_PATH
