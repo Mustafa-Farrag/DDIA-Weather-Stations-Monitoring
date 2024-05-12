@@ -1,0 +1,1 @@
+docker run --env KAFKA_BOOTSTRAP="kafka:9092" --env STATION_ID=7 -d -it -p 6660:6666 --net=kafka_network --name weather-station-1 mustafafarrag/weather-station

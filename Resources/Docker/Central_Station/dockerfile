@@ -6,6 +6,8 @@ WORKDIR /usr/src/app/
 
 EXPOSE 7777
 
+ENV KAFKA_BOOTSTRAP=kafka-service:9092
+
 ENV PARQUET_PATH=/home/parquet/
 
-ENTRYPOINT java -jar Central_Station-1.0-SNAPSHOT.jar $PARQUET_PATH
+ENTRYPOINT java -jar Central_Station-1.0-SNAPSHOT.jar

@@ -1,1 +1,0 @@
-docker run --env STATION_ID=3 -d -it -p 6660:6666 --net=kafka_network --name weather-station-1 weather-station-image

@@ -6,6 +6,8 @@ WORKDIR /usr/src/app
 
 EXPOSE 6666
 
+ENV KAFKA_BOOTSTRAP=kafka-service:9092
+
 ENV STATION_ID=1
 
-ENTRYPOINT java -jar Weather_Station-1.0-SNAPSHOT.jar ${STATION_ID}
+ENTRYPOINT java -jar Weather_Station-1.0-SNAPSHOT.jar

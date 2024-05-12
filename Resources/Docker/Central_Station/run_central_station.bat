@@ -1,0 +1,1 @@
+docker run --env KAFKA_BOOTSTRAP="kafka:9092" -d -it -p 7777:7777 --net=kafka_network --name central_station mustafafarrag/central-station

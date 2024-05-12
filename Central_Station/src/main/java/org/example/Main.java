@@ -7,10 +7,9 @@ public class Main {
         Thread rainDetectorThread = new Thread(RainDetectorProcessor::detectRain);
         rainDetectorThread.start();
 
-        CentralStation centralStation = new CentralStation(args[0]);
+        CentralStation centralStation = new CentralStation(System.getenv("PARQUET_PATH"));
 
         Thread centralStationThread = new Thread(centralStation::consume);
         centralStationThread.start();
-
     }
 }

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: central-station-deployment
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: central-station
+  template:
+    metadata:
+      labels:
+        app: central-station
+    spec:
+      containers:
+          - name: central-station
+            image: mustafafarrag/central-station:latest
+            ports:
+              - containerPort: 7777
+            env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka-service:9092"
+            
+            - name: PARQUET_PATH
+              value: "/home/parquet/"

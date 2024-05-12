@@ -9,7 +9,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import java.util.Properties;
 
 public class RainDetectorProcessor {
-    private static final String BOOTSTRAP_SERVERS = "kafka:9092";
+    private static final String BOOTSTRAP_SERVERS = System.getenv("KAFKA_BOOTSTRAP");
     private static final String INPUT_TOPIC = "weather-topic";
     private static final String OUTPUT_TOPIC = "rain-detection-topic";
 

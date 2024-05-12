@@ -1,0 +1,25 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-station-6-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weather-station-6
+  template:
+    metadata:
+      labels:
+        app: weather-station-6
+    spec:
+      containers:
+        - name: weather-station-6
+          image: mustafafarrag/weather-station:latest
+          ports:
+            - containerPort: 6666
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka-service:9092"
+            - name: STATION_ID
+              value: "6"
