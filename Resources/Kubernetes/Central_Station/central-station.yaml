@@ -24,4 +24,4 @@ spec:
               value: "kafka-service:9092"
             
             - name: PARQUET_PATH
-              value: "/home/parquet/"
+              value: "/home/parquet"
