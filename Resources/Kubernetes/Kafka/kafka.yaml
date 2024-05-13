@@ -68,12 +68,3 @@ spec:
                 configMapKeyRef:
                   name: kafka-config
                   key: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
-
-        - name: zookeeper
-          image: bitnami/zookeeper:latest
-          ports:
-            - containerPort: 2181
-
-          env:
-            - name: ALLOW_ANONYMOUS_LOGIN
-              value: "yes"

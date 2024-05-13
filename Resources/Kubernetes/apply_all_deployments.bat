@@ -1,5 +1,7 @@
 kubectl apply -f Central_Station\central-station.yaml
 pause
+kubectl apply -f Kafka\zookeeper.yaml
+pause
 kubectl apply -f Kafka\kafka.yaml
 pause
 

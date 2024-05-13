@@ -6,7 +6,7 @@ metadata:
 
 spec:
   selector:
-    app: kafka
+    app: zookeeper
   ports:
     - protocol: TCP
       port: 2181
