@@ -26,16 +26,25 @@ public class WeatherProducer {
         int s_no = 0;
 
         try (Producer<String, String> producer = new KafkaProducer<>(props)){
+            System.out.println("Starting Station From " + System.getenv("LOCATION"));
+            WeatherApi.getWeather();
 
             while (true){
-                String key = Integer.toString(s_no);
-                String value = new WeatherMessage(station_id, s_no).toString();
-
-                ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, key, value);
 
                 if(random.nextDouble() < 0.1) {
                     System.out.println("msg #"+ s_no +" dropped");
                 }else{
+                    WeatherApi.setIdx();
+                    String key = Integer.toString(s_no);
+                    String value = new WeatherMessage(
+                            station_id,
+                            s_no,
+                            WeatherApi.getHumidity(),
+                            WeatherApi.getTemperature(),
+                            WeatherApi.getWindSpeed()).toString();
+
+                    ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, key, value);
+
                     producer.send(record);
                     producer.flush();
                 }

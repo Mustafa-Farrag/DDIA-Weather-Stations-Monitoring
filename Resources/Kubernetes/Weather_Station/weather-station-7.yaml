@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "7"
+            - name: LOCATION
+              value: "Washington D.C, USA"
+            - name: LATITUDE
+              value: "38.8951"
+            - name: LONGITUDE
+              value: "-77.0364"

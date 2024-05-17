@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "8"
+            - name: LOCATION
+              value: "California, USA"
+            - name: LATITUDE
+              value: "38.6275"
+            - name: LONGITUDE
+              value: "-92.5666"

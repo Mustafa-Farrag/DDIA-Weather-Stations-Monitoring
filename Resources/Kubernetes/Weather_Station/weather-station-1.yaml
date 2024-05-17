@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "1"
+            - name: LOCATION
+              value: "Cairo, Egypt"
+            - name: LATITUDE
+              value: "30.0626"
+            - name: LONGITUDE
+              value: "31.2497"

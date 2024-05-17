@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "4"
+            - name: LOCATION
+              value: "Madrid, Spain"
+            - name: LATITUDE
+              value: "40.4165"
+            - name: LONGITUDE
+              value: "-3.7026"

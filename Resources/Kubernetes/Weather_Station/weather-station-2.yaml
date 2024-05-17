@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "2"
+            - name: LOCATION
+              value: "Riyadh, Saudi Arabia"
+            - name: LATITUDE
+              value: "24.6877"
+            - name: LONGITUDE
+              value: "46.7219"

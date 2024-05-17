@@ -7,6 +7,12 @@ public class WeatherStatus {
     private final int temperature;
     private final int wind_speed;
 
+    public WeatherStatus(int humidity, int temperature, int wind_speed) {
+        this.humidity = humidity;
+        this.temperature = temperature;
+        this.wind_speed = wind_speed;
+    }
+
     public WeatherStatus() {
         Random random = new Random();
         this.humidity = random.nextInt(0, 101);

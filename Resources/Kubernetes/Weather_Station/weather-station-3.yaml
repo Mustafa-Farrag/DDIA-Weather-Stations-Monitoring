@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "3"
+            - name: LOCATION
+              value: "Cap Town, South Africa"
+            - name: LATITUDE
+              value: "-33.9258"
+            - name: LONGITUDE
+              value: "18.4232"

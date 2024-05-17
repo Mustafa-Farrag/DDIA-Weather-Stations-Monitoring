@@ -26,6 +26,12 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "{station_id}"
+            - name: LOCATION
+              value: ""
+            - name: LATITUDE
+              value: 
+            - name: LONGITUDE
+              value: 
 """
 
 # Generate YAML files for stations 1 to 10

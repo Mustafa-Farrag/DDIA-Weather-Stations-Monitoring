@@ -35,5 +35,6 @@ spec:
 
       volumes:
       - name: parquet-mount
-        persistentVolumeClaim:
-          claimName: example-pvc
+        hostPath:
+          path: "/mnt/data"
+          type: DirectoryOrCreate

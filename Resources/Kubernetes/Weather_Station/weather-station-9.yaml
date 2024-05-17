@@ -23,3 +23,9 @@ spec:
               value: "kafka-service:9092"
             - name: STATION_ID
               value: "9"
+            - name: LOCATION
+              value: "Stockholm, Sweden"
+            - name: LATITUDE
+              value: "59.3294"
+            - name: LONGITUDE
+              value: "18.0687"
