@@ -44,7 +44,7 @@ public class WeatherProducer {
                             WeatherApi.getWindSpeed()).toString();
 
                     ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, key, value);
-
+                    System.out.println("msg #"+ s_no + value);
                     producer.send(record);
                     producer.flush();
                 }
