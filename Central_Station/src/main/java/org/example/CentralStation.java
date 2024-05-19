@@ -2,15 +2,22 @@ package org.example;
 
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.example.bitcask.Bitcask;
+import org.example.bitcask.BitcaskHandle;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
+
+import static org.example.WeatherMessageParser.extractFieldValue;
 
 
 public class CentralStation {
 
     private static final String TOPIC = "weather-topic";
+    private static final Bitcask<String, String> bitcask = new Bitcask<>();
+    private final BitcaskHandle<String, String> bitcaskHandle = bitcask.open(System.getenv("BITCASK_PATH"));
     private static final String BOOTSTRAP_SERVERS = System.getenv("KAFKA_BOOTSTRAP");
 
     private final WeatherMessageHandler weatherMessageHandler;
@@ -28,6 +35,7 @@ public class CentralStation {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
                 for (ConsumerRecord<String, String> record : records) {
                     String messageValue = record.value();
+                    bitcask.put(bitcaskHandle, extractFieldValue(messageValue, "station_id"), messageValue);
                     System.out.println("msg: "+messageValue);
                     weatherMessageHandler.addMessage(messageValue);
                 }
@@ -37,7 +45,8 @@ public class CentralStation {
         }
     }
 
-    public CentralStation(String storageBaseDir){
+    public CentralStation(String storageBaseDir) throws IOException {
         this.weatherMessageHandler = new WeatherMessageHandler(storageBaseDir);
+        bitcask.scheduleMerge(bitcaskHandle, Integer.parseInt(System.getenv("BITCASK_MERGE_DELAY")));
     }
 }

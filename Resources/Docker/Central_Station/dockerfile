@@ -10,4 +10,12 @@ ENV KAFKA_BOOTSTRAP=kafka-service:9092
 
 ENV PARQUET_PATH=/home/parquet/
 
+ENV ELASTIC_SERVICE=elasticsearch
+
+ENV ELASTIC_PORT=9200
+
+ENV BITCASK_PATH=/home/bitcask/
+
+ENV BITCASK_MERGE_DELAY=900000
+
 ENTRYPOINT java -jar Central_Station-1.0-SNAPSHOT.jar

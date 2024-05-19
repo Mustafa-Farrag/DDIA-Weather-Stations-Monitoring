@@ -16,6 +16,7 @@ spec:
       containers:
         - name: weather-station-7
           image: mustafafarrag/weather-station:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 6666
           env:

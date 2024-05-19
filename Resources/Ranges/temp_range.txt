@@ -1,9 +1,0 @@
-Extreme Cold: Below -40°F
-Very Cold: -40°F to -4°F
-Cold: -4°F to 32°F
-Cool: 32°F to 50°F
-Mild: 50°F to 68°F
-Warm: 68°F to 86°F
-Hot: 86°F to 104°F
-Very Hot: 104°F to 122°F
-Extremely Hot: Above 122°F

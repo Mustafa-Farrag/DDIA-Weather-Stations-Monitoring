@@ -20,6 +20,7 @@ spec:
       containers:
           - name: central-station
             image: mustafafarrag/central-station:latest
+            imagePullPolicy: Never
             ports:
               - containerPort: 7777
             env:
@@ -28,6 +29,18 @@ spec:
             
             - name: PARQUET_PATH
               value: "/home/parquet"
+
+            - name: ELASTIC_SERVICE
+              value: "elasticsearch-service"
+
+            - name: ELASTIC_PORT
+              value: "9200"
+
+            - name: BITCASK_PATH
+              value: "/home/bitcask"
+
+            - name: BITCASK_MERGE_DELAY
+              value: "900000"
 
             volumeMounts:
             - mountPath: "/home/parquet"

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: example-pv
+  name: central-pv
 spec:
   capacity:
     storage: 1Gi
