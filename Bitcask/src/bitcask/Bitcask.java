@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 public class Bitcask<K extends Serializable, V extends Serializable> {
 
@@ -19,7 +18,7 @@ public class Bitcask<K extends Serializable, V extends Serializable> {
         only one process may open a Bitcask with read write at a time.
      */
     public BitcaskHandle<K, V> open(String directoryName, Map<String, Integer> opts) throws IOException {
-        //TODO: Implement this.
+        return new BitcaskHandleImpl<K, V>(directoryName, opts);
     }
 
     /*
@@ -27,51 +26,66 @@ public class Bitcask<K extends Serializable, V extends Serializable> {
         The directory and all files in it must be readable by this process.
      */
     public BitcaskHandle<K, V> open(String directoryName) throws IOException {
-        //TODO: Implement this.
+        return new BitcaskHandleImpl<K, V>(directoryName);
     }
 
     /*
         Retrieve a value by key from a Bitcask datastore.
      */
     public V get(BitcaskHandle<K, V> handle, K key) {
-        //TODO: Implement this.
+        return handle.get(key);
     }
 
     /*
         Store a key and value in a Bitcask datastore.
      */
-    public boolean put(BitcaskHandle<K, V> handle, K key, V value) {
-        //TODO: Implement this.
+    public boolean put(BitcaskHandle<K, V> handle, K key, V value) throws IOException {
+        return handle.put(key, value);
     }
 
     /*
         List all keys in a Bitcask datastore.
      */
     public List<K> listKeys(BitcaskHandle<K, V> handle) {
-        //TODO: Implement this.
+        return handle.listKeys();
     }
 
     /*
         Merge several data files within a Bitcask datastore into a more
         compact form. Also, produce hintfiles for faster startup.
      */
-    public boolean merge(BitcaskHandle<K, V> handle) {
-        //TODO: Implement this.
+    public boolean merge(BitcaskHandle<K, V> handle) throws IOException {
+        return handle.merge();
     }
 
     /*
         Force any writes to sync to disk.
      */
-    public boolean sync(BitcaskHandle<K, V> handle) {
-        //TODO: Implement this.
+    public boolean sync(BitcaskHandle<K, V> handle) throws IOException {
+        return handle.sync();
     }
 
     /*
         Close a Bitcask data store and flush all pending writes
         (if any) to disk.
      */
-    public boolean close(BitcaskHandle<K, V> handle) {
-        //TODO: Implement this.
+    public boolean close(BitcaskHandle<K, V> handle) throws IOException {
+        return handle.close();
+    }
+
+    /*
+        Schedule a Bitcask data store for procedual merging.
+     */
+    public void scheduleMerge(BitcaskHandle<K, V> handle, long delay) throws IOException {
+        Thread thread = new Thread(() -> {
+            try {
+                Thread.sleep(delay);
+                merge(handle);
+                scheduleMerge(handle, delay);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 

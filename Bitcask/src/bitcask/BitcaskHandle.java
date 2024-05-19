@@ -10,7 +10,7 @@ public interface BitcaskHandle<K extends Serializable, V extends Serializable> {
     public V get(K key);
     public boolean put(K key, V value) throws IOException;
     public List<K> listKeys();
-    public boolean merge();
-    public boolean sync();
-    public boolean close();
+    public boolean merge() throws IOException;
+    public boolean sync() throws IOException;
+    public boolean close() throws IOException;
 }

@@ -1,12 +1,13 @@
 package bitcask;
 
 import java.io.*;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
 public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> implements BitcaskHandle<K, V>{
@@ -14,102 +15,92 @@ public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> i
     private static class BitcaskKeyDirRecord {
         int fileId;
         int valueSz;
-        long value_pos;
+        long valuePos;
         int timestamp;
 
-        public BitcaskKeyDirRecord(int fileId, int valueSz, long value_pos) {
+        public BitcaskKeyDirRecord(int fileId, int valueSz, long valuePos, int timestamp) {
             this.fileId = fileId;
             this.valueSz = valueSz;
-            this.value_pos = value_pos;
-            this.timestamp = Long.valueOf(Instant.now().getEpochSecond()).intValue();
-        }
-    }
-
-    /*
-    private class BitcaskFileRecord<K extends Serializable, V extends Serializable> {
-        int timestamp;
-        short kSz;
-        int valueSz;
-        K key;
-        V value;
-
-        public BitcaskFileRecord(int timestamp, short kSz, int valueSz, K key, V value) {
+            this.valuePos = valuePos;
             this.timestamp = timestamp;
-            this.kSz = kSz;
-            this.valueSz = valueSz;
-            this.key = key;
-            this.value = value;
         }
     }
-    */
-
 
     private final File activeDirectory;
     private boolean write = false;
     private boolean syncOnPut = false;
     private int maxFileSize = 100; // 100 MiB
-    private int batchSize = 1;
-    private Queue<byte[]> batch;
-    private Map<K, BitcaskKeyDirRecord> keyDir;
+    private ConcurrentMap<K, BitcaskKeyDirRecord> keyDir;
     private File activeCask;
     private RandomAccessFile activeCaskPointer;
-    private long activeCaskId = -1;
+    private int activeCaskId = -1;
+    private final Object pointerLock = new Object();
+    private final ReadWriteLock keyDirLock = new ReentrantReadWriteLock();
 
     public BitcaskHandleImpl(String directoryName) throws IOException {
-        this.activeDirectory = Paths.get(directoryName).toFile();
+        Path baseDir = Paths.get(directoryName).resolve("bitcask");
+        this.activeDirectory = baseDir.toFile();
         if (!activeDirectory.isDirectory()) {
-            if (!activeDirectory.mkdirs()) throw new IOException("Failed to create directory: " + activeDirectory);
+            activeDirectory.mkdirs();
+            baseDir.resolve("mergeCask").toFile().mkdir();
+            baseDir.resolve("mergeHint").toFile().mkdir();
+            baseDir.resolve("hint").toFile().mkdir();
         }
-        boolean hasFiles = false;
-        try (Stream<Path> entries = Files.list(activeDirectory.toPath())) {
+        boolean hasFiles;
+        try (Stream<Path> entries = Files.list(activeDirectory.toPath()).filter(o1 -> o1.toFile().isFile())) {
              hasFiles = entries.findFirst().isPresent();
-             entries.close();
         }
         if (hasFiles) {
             this.regenKeyDir();
         } else {
-            this.keyDir = new HashMap<>();
+            this.keyDir = new ConcurrentHashMap<>();
         }
     }
 
     public BitcaskHandleImpl(String directoryName, Map<String, Integer> opts) throws IOException {
-        this.activeDirectory = Paths.get(directoryName).toFile();
+        Path baseDir = Paths.get(directoryName).resolve("bitcask");
+        this.activeDirectory = baseDir.toFile();
         if (!activeDirectory.isDirectory()) {
-            if (!activeDirectory.mkdirs()) throw new IOException("Failed to create directory: " + activeDirectory);
+            activeDirectory.mkdirs();
+            baseDir.resolve("mergeCask").toFile().mkdir();
+            baseDir.resolve("mergeHint").toFile().mkdir();
+            baseDir.resolve("hint").toFile().mkdir();
         }
-        this.write = opts.getOrDefault("readWrite", 0) == 1;
-        this.syncOnPut = opts.getOrDefault("syncOnPut", 0) == 1;
+        this.write = opts.getOrDefault("readWrite", this.write ? 1 : 0) == 1;
+        this.syncOnPut = opts.getOrDefault("syncOnPut", this.syncOnPut ? 1 : 0) == 1;
         this.maxFileSize = opts.getOrDefault("maxFileSize", this.maxFileSize);
-        this.batchSize = opts.getOrDefault("batchSize", this.batchSize);
-        if (!this.syncOnPut) this.batch = new ArrayDeque<>(this.batchSize);
-        boolean hasFiles = false;
-        try (Stream<Path> entries = Files.list(activeDirectory.toPath())) {
+        boolean hasFiles;
+        try (Stream<Path> entries = Files.list(activeDirectory.toPath()).filter(o1 -> o1.toFile().isFile())) {
             hasFiles = entries.findFirst().isPresent();
-            entries.close();
         }
         if (hasFiles) {
             this.regenKeyDir();
         } else {
-            this.keyDir = new HashMap<>();
+            this.keyDir = new ConcurrentHashMap<>();
         }
     }
 
     @Override
     public V get(K key) {
-        BitcaskKeyDirRecord record = keyDir.get(key);
-        if (record == null) return null;
-        Path path = activeDirectory.toPath().resolve(record.fileId + ".cask");
-        try (RandomAccessFile file = new RandomAccessFile(path.toFile(), "r")) {
-            file.seek(record.value_pos + 4);
-            short keySize = file.readShort();
-            int valueSize = file.readInt();
-            file.seek(keySize);
-            byte[] valueBytes = new byte[valueSize];
-            file.read(valueBytes);
-            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(valueBytes));
-            return (V) objectInputStream.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+        keyDirLock.readLock().lock();
+        try {
+            BitcaskKeyDirRecord record = keyDir.get(key);
+            if (record == null) return null;
+            Path path = activeDirectory.toPath().resolve(record.fileId + ".cask");
+            try (RandomAccessFile file = new RandomAccessFile(path.toFile(), "r")) {
+                file.seek(record.valuePos + 4);
+                short keySize = file.readShort();
+                int valueSize = file.readInt();
+                file.seek(file.getFilePointer() + keySize);
+                byte[] valueBytes = new byte[valueSize];
+                file.read(valueBytes);
+                ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(valueBytes));
+                return (V) objectInputStream.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        } finally {
+            keyDirLock.readLock().unlock();
         }
     }
 
@@ -117,9 +108,9 @@ public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> i
     public boolean put(K key, V value) throws IOException {
         if (!canWrite()) return false;
         if (shouldGenerateNewCask()) generateActiveCask();
-        this.activeCaskPointer.writeInt(Long.valueOf(Instant.now().getEpochSecond()).intValue());
+        int timestamp = Long.valueOf(Instant.now().getEpochSecond()).intValue();
 
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(0);
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
         objectOutputStream.writeObject(key);
         objectOutputStream.flush();
@@ -133,10 +124,17 @@ public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> i
         objectOutputStream.close();
         byte[] valueBytes = byteArrayOutputStream.toByteArray();
 
-        this.activeCaskPointer.writeShort(keyBytes.length);
-        this.activeCaskPointer.writeInt(valueBytes.length);
-        this.activeCaskPointer.write(keyBytes);
-        this.activeCaskPointer.write(valueBytes);
+        long offset;
+        synchronized (this.pointerLock) {
+            offset = this.activeCaskPointer.getFilePointer();
+            this.activeCaskPointer.writeInt(timestamp);
+            this.activeCaskPointer.writeShort(keyBytes.length);
+            this.activeCaskPointer.writeInt(valueBytes.length);
+            this.activeCaskPointer.write(keyBytes);
+            this.activeCaskPointer.write(valueBytes);
+        }
+
+        this.keyDir.put(key, new BitcaskKeyDirRecord(this.activeCaskId, valueBytes.length, offset, timestamp));
         return true;
     }
 
@@ -146,43 +144,211 @@ public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> i
     }
 
     @Override
-    public boolean merge() {
-        //TODO: Implement this.
+    public boolean merge() throws IOException {
+        long dirSize;
+        try (Stream<Path> files = Files.list(this.activeDirectory.toPath()).filter(o1 -> o1.toFile().isFile())) {
+            dirSize = files.count();
+        }
+        if (dirSize < 2) return true;
+        Map<K, BitcaskKeyDirRecord> keyDirSnapshot = new HashMap<>(this.keyDir);
+        int thresholdCaskId = this.activeCaskId == -1 ? this.getMaxId()+1 : this.activeCaskId;
+        int mergedId = 0;
+        Path mergeCaskDir = this.activeDirectory.toPath().resolve("mergeCask");
+        Path mergeHintDir = this.activeDirectory.toPath().resolve("mergeHint");
+        RandomAccessFile mergedFile = new RandomAccessFile(mergeCaskDir.resolve(mergedId + ".cask").toFile(), "rws");
+        RandomAccessFile hintFile = new RandomAccessFile(mergeHintDir.resolve(mergedId + ".hint").toFile(), "rws");
+        keyDirSnapshot.entrySet().removeIf(kBitcaskKeyDirRecordEntry -> kBitcaskKeyDirRecordEntry.getValue().fileId >= thresholdCaskId);
+        for (var entry : keyDirSnapshot.entrySet()) {
+            if(mergedFile.length() > (long) this.maxFileSize * 1024 * 1024) {
+                mergedFile.close();
+                hintFile.close();
+                ++mergedId;
+                mergedFile = new RandomAccessFile(mergeCaskDir.resolve(mergedId + ".cask").toFile(), "rws");
+                hintFile = new RandomAccessFile(mergeHintDir.resolve(mergedId + ".hint").toFile(), "rws");
+            }
+            BitcaskKeyDirRecord record = entry.getValue();
+            long newOffset = mergedFile.getFilePointer();
+            RandomAccessFile recordFile = new RandomAccessFile(this.activeDirectory.toPath().resolve(record.fileId + ".cask").toFile(), "r");
+            recordFile.seek(record.valuePos);
+            int timestamp = recordFile.readInt();
+            short keySize = recordFile.readShort();
+            int valueSize = recordFile.readInt();
+            byte[] keyBytes = new byte[keySize];
+            recordFile.read(keyBytes);
+            byte[] valueBytes = new byte[valueSize];
+            recordFile.read(valueBytes);
+            recordFile.close();
+            mergedFile.writeInt(timestamp);
+            mergedFile.writeShort(keySize);
+            mergedFile.writeInt(valueSize);
+            mergedFile.write(keyBytes);
+            mergedFile.write(valueBytes);
+            hintFile.writeInt(timestamp);
+            hintFile.writeShort(keySize);
+            hintFile.writeInt(valueSize);
+            hintFile.writeLong(newOffset);
+            hintFile.write(keyBytes);
+            record.fileId = mergedId;
+            record.valuePos = newOffset;
+        }
+        mergedFile.close();
+        hintFile.close();
+        keyDirLock.writeLock().lock();
+        try {
+            for (var entry : keyDirSnapshot.entrySet()) {
+                if (this.keyDir.get(entry.getKey()).timestamp != entry.getValue().timestamp) continue;
+                this.keyDir.put(entry.getKey(), entry.getValue());
+            }
+        } finally {
+            keyDirLock.writeLock().unlock();
+        }
+        for (int i = 0; i < thresholdCaskId; ++i) {
+            Files.deleteIfExists(this.activeDirectory.toPath().resolve(i + ".cask"));
+            Files.deleteIfExists(this.activeDirectory.toPath().resolve("hint").resolve(i + ".hint"));
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(mergeCaskDir)) {
+            for (Path path : stream) {
+                Files.move(path, this.activeDirectory.toPath().resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(mergeHintDir)) {
+            for (Path path : stream) {
+                Files.move(path, this.activeDirectory.toPath().resolve("hint").resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+
         return false;
     }
 
     @Override
-    public boolean sync() {
-        //TODO: Implement this.
-        return false;
+    public boolean sync() throws IOException {
+        if (this.syncOnPut) return true;
+        this.syncOnPut = true;
+        if (this.activeCaskPointer != null) {
+            synchronized (this.pointerLock) {
+                this.activeCaskPointer.close();
+                this.activeCaskPointer = new RandomAccessFile(this.activeCask, "rws");
+            }
+        }
+        return true;
     }
 
     @Override
-    public boolean close() {
-        //TODO: Implement this.
-        return false;
+    public boolean close() throws IOException {
+        if (this.activeCaskPointer != null) {
+            synchronized (this.pointerLock) {
+                this.activeCaskPointer.close();
+            }
+        }
+        return true;
     }
 
     private void regenKeyDir() throws IOException {
-        //TODO: Implement this.
+        int maxTimestamp = 0;
+        Set<Integer> readFiles = new HashSet<>();
+        Map<K, BitcaskKeyDirRecord> newKeyDir = new HashMap<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(this.activeDirectory.toPath().resolve("hint"))) {
+            for (Path path : stream) {
+                int fileId = Integer.parseInt(path.getFileName().toString().substring(0, path.getFileName().toString().indexOf('.')));
+                readFiles.add(fileId);
+                RandomAccessFile hintFile = new RandomAccessFile(path.toFile(), "r");
+                while (true) {
+                    try {
+                        int timestamp = hintFile.readInt();
+                        short keySize = hintFile.readShort();
+                        int valueSize = hintFile.readInt();
+                        long valuePos = hintFile.readLong();
+                        byte[] keyBytes = new byte[keySize];
+                        hintFile.read(keyBytes);
+                        ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(keyBytes));
+                        maxTimestamp = Math.max(maxTimestamp, timestamp);
+                        K key = (K) objectInputStream.readObject();
+                        BitcaskKeyDirRecord entry = new BitcaskKeyDirRecord(fileId, valueSize, valuePos, timestamp);
+                        newKeyDir.put(key, entry);
+                    } catch (EOFException ex) {
+                        break;
+                    }
+                }
+                hintFile.close();
+                break;
+            }
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(this.activeDirectory.toPath())) {
+            for (Path path : stream) {
+                if (path.toFile().isDirectory()) continue;
+                int fileId = Integer.parseInt(path.getFileName().toString().substring(0, path.getFileName().toString().indexOf('.')));
+                if (readFiles.contains(fileId)) continue;
+                readFiles.add(fileId);
+                RandomAccessFile file = new RandomAccessFile(path.toFile(), "r");
+                long offset = file.getFilePointer();
+                int timestamp = file.readInt();
+                if (timestamp < maxTimestamp) {
+                    continue;
+                }
+                short keySize = file.readShort();
+                int valueSize = file.readInt();
+                byte[] keyBytes = new byte[keySize];
+                file.read(keyBytes);
+                file.seek(file.getFilePointer() + valueSize);
+                ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(keyBytes));
+                K key = (K) objectInputStream.readObject();
+                var entry = newKeyDir.getOrDefault(key, null);
+                if (entry != null) {
+                    if (entry.timestamp < timestamp) {
+                        entry = new BitcaskKeyDirRecord(fileId, valueSize, offset, timestamp);
+                        newKeyDir.put(key, entry);
+                    }
+                } else {
+                    entry = new BitcaskKeyDirRecord(fileId, valueSize, offset, timestamp);
+                    newKeyDir.put(key, entry);
+                }
+                while (true) {
+                    try {
+                        offset = file.getFilePointer();
+                        timestamp = file.readInt();
+                        keySize = file.readShort();
+                        valueSize = file.readInt();
+                        keyBytes = new byte[keySize];
+                        file.read(keyBytes);
+                        file.seek(file.getFilePointer() + valueSize);
+                        objectInputStream = new ObjectInputStream(new ByteArrayInputStream(keyBytes));
+                        key = (K) objectInputStream.readObject();
+                        entry = newKeyDir.getOrDefault(key, null);
+                        if (entry != null) {
+                            if (entry.timestamp < timestamp) {
+                                entry = new BitcaskKeyDirRecord(fileId, valueSize, offset, timestamp);
+                                newKeyDir.put(key, entry);
+                            }
+                        } else {
+                            entry = new BitcaskKeyDirRecord(fileId, valueSize, offset, timestamp);
+                            newKeyDir.put(key, entry);
+                        }
+                    } catch (EOFException ex) {
+                        break;
+                    }
+                }
+                file.close();
+            }
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        keyDirLock.writeLock().lock();
+        try {
+            this.keyDir = new ConcurrentHashMap<>(newKeyDir);
+        } finally {
+            keyDirLock.writeLock().unlock();
+        }
     }
 
     private void generateActiveCask() throws IOException {
         if (this.activeCaskId == -1) {
-            long maxId = 0;
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(activeDirectory.toPath())) {
-                for (Path path : stream) {
-                    File file = path.toFile();
-                    if (file.isFile()) {
-                        long id = Long.parseLong(file.getName().substring(0, file.getName().indexOf('.')));
-                        maxId = Math.max(maxId, id);
-                    }
-                }
-            }
-            this.activeCaskId = maxId;
+            this.activeCaskId = this.getMaxId();
         }
         ++this.activeCaskId;
-        File newCask = this.activeDirectory.toPath().resolve(this.activeCaskId + 1 + ".cask").toFile();
+        File newCask = this.activeDirectory.toPath().resolve(this.activeCaskId + ".cask").toFile();
         while (newCask.exists()) {
             ++this.activeCaskId;
             newCask = this.activeDirectory.toPath().resolve(Integer.toUnsignedLong(this.activeCaskId) + ".cask").toFile();
@@ -195,8 +361,23 @@ public class BitcaskHandleImpl<K extends Serializable, V extends Serializable> i
             newCaskPointer = new RandomAccessFile(newCask, "rw");
         }
         this.activeCask = newCask;
-        if (this.activeCaskPointer != null) this.activeCaskPointer.close();
-        this.activeCaskPointer = newCaskPointer;
+        synchronized (this.pointerLock) {
+            if (this.activeCaskPointer != null) this.activeCaskPointer.close();
+            this.activeCaskPointer = newCaskPointer;
+        }
+    }
+
+    private int getMaxId() throws IOException {
+        int maxId = -1;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(activeDirectory.toPath())) {
+            for (Path path : stream) {
+                File file = path.toFile();
+                if (!file.isFile()) continue;
+                int id = Integer.parseInt(file.getName().substring(0, file.getName().indexOf('.')));
+                maxId = Math.max(maxId, id);
+            }
+        }
+        return maxId;
     }
 
     private boolean shouldGenerateNewCask() {
