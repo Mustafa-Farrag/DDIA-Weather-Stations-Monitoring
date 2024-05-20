@@ -40,7 +40,7 @@ spec:
               value: "/mnt/bitcask"
 
             - name: BITCASK_MERGE_DELAY
-              value: "900000"
+              value: "600000"
 
             volumeMounts:
             - mountPath: "/home/parquet"

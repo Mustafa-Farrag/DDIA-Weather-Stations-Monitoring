@@ -78,15 +78,21 @@ public class Bitcask<K extends Serializable, V extends Serializable> {
         Schedule a Bitcask data store for procedual merging.
      */
     public void scheduleMerge(BitcaskHandle<K, V> handle, long delay) throws IOException {
+        System.out.println("Hello from scheduler");
         Thread thread = new Thread(() -> {
             try {
-                Thread.sleep(delay);
-                merge(handle);
-                scheduleMerge(handle, delay);
+                while (true) {
+                    System.out.println("Hello from inside scheduler loop");
+                    merge(handle);
+                    System.out.println("Hello after merge");
+                    Thread.sleep(delay);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        thread.start();
+        System.out.println("Hello after starting thread");
     }
 
 
